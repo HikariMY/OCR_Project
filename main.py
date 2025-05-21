@@ -87,7 +87,7 @@ def show_result(original, translated):
 
 def hotkey_listener():
     print("📣 รอฟัง Ctrl+Alt+T เพื่อแปลภาพ")
-    keyboard.add_hotkey("ctrl+alt+t", capture_and_translate)
+    keyboard.add_hotkey("alt+w", capture_and_translate)
     keyboard.wait()
 
 if __name__ == "__main__":
