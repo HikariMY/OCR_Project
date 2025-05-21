@@ -1,38 +1,21 @@
 import tkinter as tk
+from tkinter import font
 from PIL import ImageGrab
-import threading
 import keyboard
+import threading
 from utils.ocr_translate import perform_ocr_and_translate
 
-def show_overlay(text):
-    overlay = tk.Tk()
-    overlay.overrideredirect(True)
-    overlay.attributes("-topmost", True)
-    overlay.attributes("-alpha", 0.9)
-    overlay.configure(bg="black")
-
-    screen_width = overlay.winfo_screenwidth()
-    screen_height = overlay.winfo_screenheight()
-
-    width = 600
-    height = 200
-    x = (screen_width // 2) - (width // 2)
-    y = 50
-
-    overlay.geometry(f"{width}x{height}+{x}+{y}")
-
-    label = tk.Label(overlay, text=text, font=("TH SarabunPSK", 18), fg="white", bg="black", wraplength=580, justify="left")
-    label.pack(padx=10, pady=10)
-
-    # ปิดเองอัตโนมัติหลัง 10 วินาที
-    overlay.after(10000, overlay.destroy)
-    overlay.mainloop()
+def retranslate(source_text, target_box):
+    result = perform_ocr_and_translate(source_text)
+    target_box.config(state="normal")
+    target_box.delete("1.0", tk.END)
+    target_box.insert(tk.END, result)
+    target_box.config(state="disabled")
 
 def capture_and_translate():
     root = tk.Tk()
     root.withdraw()
 
-    # หน้าจอลากแคป
     selector = tk.Toplevel()
     selector.attributes("-fullscreen", True)
     selector.attributes("-alpha", 0.3)
@@ -66,8 +49,9 @@ def capture_and_translate():
                 max(abs_start_x, abs_end_x), max(abs_start_y, abs_end_y))
 
         image = ImageGrab.grab(bbox)
-        result = perform_ocr_and_translate(image)
-        show_overlay(result)
+        original_text, translated_text = perform_ocr_and_translate(image, return_both=True)
+
+        show_result(original_text, translated_text)
 
     canvas.bind("<Button-1>", on_mouse_down)
     canvas.bind("<B1-Motion>", on_mouse_drag)
@@ -75,10 +59,36 @@ def capture_and_translate():
 
     selector.mainloop()
 
+def show_result(original, translated):
+    win = tk.Toplevel()
+    win.title("OCR Translate Result")
+    win.geometry("600x400")
+
+    fnt = font.Font(family="Arial", size=16)
+
+    original_box = tk.Text(win, height=5, font=fnt)
+    original_box.pack(fill="both", expand=False)
+    original_box.insert("1.0", original)
+    original_box.config(state="disabled")
+
+    translated_box = tk.Text(win, height=10, font=fnt)
+    translated_box.pack(fill="both", expand=True)
+    translated_box.insert("1.0", translated)
+    translated_box.config(state="disabled")
+
+    bottom_frame = tk.Frame(win)
+    bottom_frame.pack(fill="x")
+
+    def on_retranslate():
+        retranslate(original, translated_box)
+
+    tk.Button(bottom_frame, text="Re-translate", command=on_retranslate).pack(side="right", padx=5, pady=5)
+    tk.Button(bottom_frame, text="OK", command=win.destroy).pack(side="right", padx=5)
+
 def hotkey_listener():
-    print("📣 รอฟังคำสั่ง Ctrl+Alt+T เพื่อเริ่มแคปหน้าจอ...")
+    print("📣 รอฟัง Ctrl+Alt+T เพื่อแปลภาพ")
     keyboard.add_hotkey("ctrl+alt+t", capture_and_translate)
-    keyboard.wait()  # รอไปเรื่อยๆ
+    keyboard.wait()
 
 if __name__ == "__main__":
     threading.Thread(target=hotkey_listener).start()
